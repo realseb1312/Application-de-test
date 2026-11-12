@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pilotage — Feuille de route 2027-2030</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#5b8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 17l5-6 4 4 6-8 3 4"/><circle cx="3" cy="17" r="1.6" fill="#5b8cff"/><circle cx="21" cy="7" r="1.6" fill="#5b8cff"/>
+      </svg>
+      <div class="brand-txt"><strong>Feuille de route</strong><span>2027 – 2030 · Pilotage</span></div>
+    </div>
+    <nav id="nav">
+      <a href="#/dashboard" data-view="dashboard">Tableau de bord</a>
+      <a href="#/actions" data-view="actions">Actions</a>
+      <a href="#/kanban" data-view="kanban">Kanban</a>
+      <a href="#/planning" data-view="planning">Planning</a>
+      <a href="#/budget" data-view="budget">Budget</a>
+      <a href="#/rapports" data-view="rapports">Rapports</a>
+    </nav>
+    <div class="side-foot">
+      <div class="side-title">Données</div>
+      <button class="side-btn" id="btn-export-xlsx" type="button">Exporter Excel (.xlsx)</button>
+      <button class="side-btn" id="btn-export-csv" type="button">Exporter CSV</button>
+      <button class="side-btn" id="btn-import" type="button">Réimporter un Excel…</button>
+      <input type="file" id="import-file" accept=".xlsx" hidden>
+      <button class="side-btn" id="btn-backup" type="button">Sauvegarder la base</button>
+      <button class="side-btn" id="btn-restore" type="button">Restaurer une base…</button>
+      <input type="file" id="restore-file" accept=".db" hidden>
+      <div id="meta-info" class="meta-info"></div>
+    </div>
+  </aside>
+  <div id="main">
+    <header id="topbar">
+      <input id="global-search" type="search" placeholder="Rechercher une action, un axe, un responsable…" autocomplete="off">
+      <input id="user-name" placeholder="Votre nom (historique)" autocomplete="off" title="Auteur enregistré dans l'historique des modifications">
+      <button id="btn-print" class="btn primary" type="button">Imprimer un rapport</button>
+      <button id="btn-new-action" class="btn" type="button">+ Nouvelle action</button>
+    </header>
+    <main id="view" aria-live="polite"></main>
+  </div>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="/static/js/charts.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport de suivi — Feuille de route 2027-2030</title>
+<style>
+  :root { --ink:#1c2733; --muted:#64748b; --line:#dbe2ec; --navy:#14263f; --accent:#2563eb; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: var(--ink); margin: 0; background:#eef1f6; font-size: 13px; }
+  .toolbar { position: sticky; top: 0; background: var(--navy); color: #fff; padding: 10px 18px; display: flex; gap: 10px; align-items: center; }
+  .toolbar strong { margin-right: auto; }
+  .toolbar button { background: var(--accent); border: 0; color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .toolbar button.ghost { background: #ffffff22; }
+  .page { max-width: 1080px; margin: 18px auto; background: #fff; padding: 28px 32px; box-shadow: 0 1px 4px #0002; }
+  h1 { font-size: 20px; margin: 0 0 2px; color: var(--navy); }
+  h2 { font-size: 15px; margin: 26px 0 8px; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 4px; }
+  .sub { color: var(--muted); margin-bottom: 4px; }
+  .filtres { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #f1f5fb; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .kpi .v { font-size: 19px; font-weight: 700; color: var(--navy); }
+  .kpi .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .st-a-faire { background:#94a3b8; } .st-en-cours { background:#2563eb; } .st-en-attente { background:#d97706; }
+  .st-termine { background:#16a34a; } .st-annule { background:#dc2626; }
+  .retard { color: #dc2626; font-weight: 700; }
+  .alerte { border-left: 4px solid #dc2626; background: #fef2f2; padding: 6px 10px; margin: 6px 0; page-break-inside: avoid; }
+  .alerte.moyenne { border-color: #d97706; background: #fffbeb; }
+  .obj { color: var(--muted); font-size: 11px; }
+  .footer { margin-top: 30px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); padding-top: 8px; display:flex; justify-content: space-between; }
+  .sign { margin-top: 40px; display: flex; gap: 60px; }
+  .sign div { border-top: 1px solid var(--ink); padding-top: 4px; width: 220px; font-size: 11px; color: var(--muted); }
+  @media print {
+    body { background: #fff; font-size: 11px; }
+    .toolbar { display: none; }
+    .page { box-shadow: none; margin: 0; padding: 0; max-width: none; }
+    @page { size: A4; margin: 13mm; }
+    h2 { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar no-print">
+  <strong>Rapport de suivi — Feuille de route 2027-2030</strong>
+  <button type="button" onclick="window.print()">Imprimer / Enregistrer en PDF</button>
+  <button type="button" class="ghost" onclick="window.close()">Fermer</button>
+</div>
+<div class="page">
+  <h1>Rapport de suivi de la feuille de route 2027-2030</h1>
+  <div class="sub">Généré le {{ today.strftime('%d/%m/%Y') }}</div>
+  {% set f = [] %}
+  {% if filtres.get('axe') %}{% set _ = f.append('Axe : ' ~ filtres.get('axe')) %}{% endif %}
+  {% if filtres.get('statut') %}{% set _ = f.append('Statut : ' ~ filtres.get('statut')) %}{% endif %}
+  {% if filtres.get('priorite') %}{% set _ = f.append('Priorité : ' ~ filtres.get('priorite')) %}{% endif %}
+  {% if filtres.get('q') %}{% set _ = f.append('Recherche : « ' ~ filtres.get('q') ~ ' »') %}{% endif %}
+  <div class="filtres">Filtres appliqués : {{ f|join(' · ') if f else 'aucun (toutes les actions)' }}</div>
+
+  <h2>1. Synthèse</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="v">{{ stats.total }}</div><div class="l">Actions</div></div>
+    <div class="kpi"><div class="v">{{ stats.avancement_moyen }} %</div><div class="l">Avancement moyen</div></div>
+    {% for s, n in stats.by_statut.items() %}
+    <div class="kpi"><div class="v">{{ n }}</div><div class="l">{{ s }}</div></div>
+    {% endfor %}
+    <div class="kpi"><div class="v">{{ stats.budget_prevu|fmt_eur }}</div><div class="l">Budget prévu</div></div>
+    <div class="kpi"><div class="v">{{ stats.budget_conso|fmt_eur }}</div><div class="l">Budget consommé</div></div>
+    <div class="kpi"><div class="v">{{ stats.budget_reste|fmt_eur }}</div><div class="l">Reste à engager</div></div>
+    <div class="kpi"><div class="v retard">{{ stats.en_retard }}</div><div class="l">En retard</div></div>
+    <div class="kpi"><div class="v">{{ stats.echeance_30j }}</div><div class="l">Échéance à 30 j</div></div>
+  </div>
+
+  {% if alertes %}
+  <h2>2. Alertes ({{ alertes|length }})</h2>
+  {% for al in alertes[:50] %}
+  <div class="alerte {{ 'moyenne' if al.priorite == 'moyenne' }}">
+    <strong>#{{ al.action.id }}</strong> {{ al.action.action }} — {{ al.message }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <h2>{{ '3' if alertes else '2' }}. Détail des actions ({{ actions|length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Axe</th><th>Thématique</th><th>Action</th><th>Échéance</th>
+        <th>Statut</th><th class="num">Av.</th><th>Priorité</th><th>Responsable</th>
+        <th class="num">Budget prévu</th><th class="num">Consommé</th><th class="num">Reste</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in actions %}
+      <tr>
+        <td>{{ a.id }}</td>
+        <td>{{ a.axe }}</td>
+        <td>{{ a.thematique }}</td>
+        <td>{{ a.action }}{% if a.objectif %}<div class="obj">Objectif : {{ a.objectif }}</div>{% endif %}</td>
+        <td>{% if a.en_retard %}<span class="retard">{% endif %}{{ a.echeance_text or '—' }}{% if a.en_retard %}</span>{% endif %}<br><span class="obj">{{ a.echeance_start|fmt_date }} → {{ a.echeance_end|fmt_date }}</span></td>
+        <td><span class="badge st-{{ a.statut|lower|replace(' ','-')|replace('é','e')|replace('à','a') }}">{{ a.statut }}</span></td>
+        <td class="num">{{ a.avancement }} %</td>
+        <td>{{ a.priorite }}</td>
+        <td>{{ a.responsable or '—' }}</td>
+        <td class="num">{{ a.budget_prev|fmt_eur }}</td>
+        <td class="num">{{ a.budget_conso|fmt_eur }}</td>
+        <td class="num">{{ a.reste|fmt_eur }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>{{ '4' if alertes else '3' }}. Synthèse par axe</h2>
+  <table>
+    <thead><tr><th>Axe</th><th class="num">Actions</th><th class="num">Avancement moy.</th><th class="num">Budget prévu</th><th class="num">Consommé</th><th class="num">Terminées</th><th class="num">En retard</th></tr></thead>
+    <tbody>
+    {% for axe, e in stats.by_axe.items() %}
+      <tr><td>{{ axe }}</td><td class="num">{{ e.count }}</td><td class="num">{{ e.avancement }} %</td><td class="num">{{ e.prevu|fmt_eur }}</td><td class="num">{{ e.conso|fmt_eur }}</td><td class="num">{{ e.terminees }}</td><td class="num">{{ e.en_retard }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if depenses %}
+  <h2>{{ '5' if alertes else '4' }}. Dépenses enregistrées ({{ depenses|length }})</h2>
+  <table>
+    <thead><tr><th># Action</th><th>Action</th><th>Date</th><th>Libellé</th><th>Catégorie</th><th class="num">Montant</th></tr></thead>
+    <tbody>
+    {% for d in depenses[:100] %}
+      <tr><td>{{ d.action_id }}</td><td>{{ d.action_titre }}</td><td>{{ d.date|fmt_date }}</td><td>{{ d.libelle }}</td><td>{{ d.categorie }}</td><td class="num">{{ d.montant|fmt_eur }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="footer">
+    <span>Source : {{ meta.get('source_file', 'feuille de route 2027-2030') }} (import du {{ meta.get('imported_at', '—') }})</span>
+    <span>Application de suivi — Feuille de route 2027-2030</span>
+  </div>
+  <div class="sign">
+    <div>Responsable informatique</div>
+    <div>Date</div>
+  </div>
+</div>
+</body>
+</html>
