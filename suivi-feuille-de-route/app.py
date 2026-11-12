@@ -619,6 +619,12 @@ def api_meta():
     return jsonify({r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM meta")})
 
 
+ensure_seeded()
+
 if __name__ == "__main__":
-    ensure_seeded()
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    host = os.environ.get("FDR_HOST", "127.0.0.1")
+    port = int(os.environ.get("FDR_PORT", "5000"))
+    if host not in ("127.0.0.1", "localhost"):
+        print("ATTENTION : écoute sur", host, "- l'application n'a pas d'authentification intégrée."
+              " Restreindre l'accès par pare-feu et/ou reverse proxy avec authentification.")
+    app.run(host=host, port=port, debug=False)

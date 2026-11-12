@@ -66,7 +66,83 @@ Dans votre navigateur : **http://127.0.0.1:5000**
 - Le navigateur n'ouvre rien → vérifier que le terminal affiche bien `Running on http://127.0.0.1:5000` et qu'aucun pare-feu ne bloque la boucle locale.
 
 ### Sécurité
-L'application n'écoute que sur **127.0.0.1** (votre machine uniquement) : ne la lancez pas avec `host="0.0.0.0"` et ne l'exposez pas sur le réseau.
+Par défaut, l'application n'écoute que sur **127.0.0.1** (votre machine uniquement). Voir la section « Déploiement sur un serveur » ci-dessous pour un accès réseau contrôlé.
+
+## Déploiement sur un serveur
+
+L'application n'a **pas d'authentification intégrée** : ne l'exposez jamais directement sur Internet. Deux options :
+
+### Option A — test rapide en réseau local (LAN)
+Sur le serveur :
+```bash
+FDR_HOST=0.0.0.0 FDR_PORT=5000 python3 app.py
+```
+Depuis un poste du réseau : `http://<IP-du-serveur>:5000`.
+⚠️ Sans protection : à réserver à un réseau de confiance, avec le pare-feu du serveur qui limite l'accès au sous-réseau interne (ex. `sudo ufw allow from 192.168.1.0/24 to any port 5000`).
+
+### Option B — production recommandée : Gunicorn + service systemd + Nginx en reverse proxy (Linux)
+```bash
+# 1. Déployer le code sur le serveur (ex. /opt/suivi-feuille-de-route)
+git clone https://github.com/realseb1312/Application-de-test.git
+cd Application-de-test && git checkout vibe/suivi-feuille-de-route-b2db25
+cd suivi-feuille-de-route
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt -r requirements-server.txt   # gunicorn en plus
+
+# 2. Service systemd : /etc/systemd/system/suivi-fdr.service
+[Unit]
+Description=Suivi feuille de route 2027-2030
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/suivi-feuille-de-route
+ExecStart=/opt/suivi-feuille-de-route/.venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+Restart=always
+User=www-data
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl daemon-reload && sudo systemctl enable --now suivi-fdr
+
+# 3. Nginx en reverse proxy + authentification basique : /etc/nginx/sites-available/suivi-fdr
+server {
+    listen 80;
+    server_name suivi-fdr.interne.local;
+    location / {
+        auth_basic "Suivi feuille de route";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+# sudo apt install apache2-utils nginx
+# sudo htpasswd -c /etc/nginx/.htpasswd monutilisateur
+# sudo ln -s /etc/nginx/sites-available/suivi-fdr /etc/nginx/sites-enabled/
+# sudo nginx -t && sudo systemctl reload nginx
+# pare-feu : sudo ufw allow 80/tcp && sudo ufw enable
+```
+Accès : `http://suivi-fdr.interne.local` (ou l'IP du serveur) — protégé par mot de passe.
+
+**Windows Server** : remplacer Gunicorn par Waitress (`pip install waitress`, puis `waitress-serve --listen=127.0.0.1:8000 app:app`), derrière IIS ou Nginx, lancé via une tâche planifiée.
+
+### Données et sauvegardes
+- La base est `<dossier-du-projet>/data/app.db` : sauvegardez ce fichier régulièrement (bouton « Sauvegarder la base » dans l'app, ou cron : `cp data/app.db /backup/app-$(date +\%F).db`).
+- SQLite convient à une petite équipe en lecture/écriture simultanée ; Gunicorn à 2-4 workers suffit largement.
+
+### Mises à jour sur le serveur
+```bash
+cd /opt/suivi-feuille-de-route
+git fetch origin && git checkout vibe/suivi-feuille-de-route-b2db25 && git pull
+source .venv/bin/activate && pip install -r requirements.txt -r requirements-server.txt
+sudo systemctl restart suivi-fdr
+```
+
+### Règles de sécurité
+- Jamais d'exposition Internet directe ; accès interne uniquement (pare-feu) + reverse proxy avec authentification (basic auth, ou mieux SSO/VPN de votre organisation).
+- HTTPS (Let's Encrypt via Nginx) uniquement si un accès externe est vraiment nécessaire.
+- Ne définissez `FDR_HOST=0.0.0.0` que derrière ces protections.
 
 ## Fonctionnalités
 
