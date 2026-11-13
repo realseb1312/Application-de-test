@@ -342,3 +342,48 @@ data/                base SQLite (créée au lancement)
 - `GET /api/export.xlsx`, `GET /api/export.csv`, `POST /api/import` (multipart .xlsx)
 - `GET /api/backup`, `POST /api/restore` (multipart .db)
 - `GET /rapport?axe=...&statut=...` (rapport imprimable)
+
+
+## Exploitation au quotidien (synthèse)
+
+### Après un arrêt / redémarrage du serveur PRO205911MST001
+- **Rien à faire manuellement** : le service Windows `SuiviFDR` est en démarrage automatique (AUTO_START), IIS (W3SVC) aussi.
+- Après le boot, vérifier : `Get-Service SuiviFDR` → `Running` ; depuis le serveur `http://127.0.0.1/` ; depuis un poste du domaine `http://PRO205911MST001/`.
+- Si le service ne démarre pas : `Start-Service SuiviFDR` (ou `nssm start SuiviFDR`). Logs : `C:\apps\suivi-feuille-de-route\logs\err.log`.
+- Les données persistent dans `data\app.db` (elles survivent aux redémarrages) ; sauvegarde automatique chaque nuit vers `C:\backups` (tâche planifiée 02:00).
+
+### Commandes utiles
+| Action | Commande |
+|---|---|
+| État du service | `Get-Service SuiviFDR` |
+| Démarrer / arrêter / redémarrer l'app | `Start-Service SuiviFDR` / `Stop-Service SuiviFDR` / `Restart-Service SuiviFDR` |
+| Redémarrer IIS | `iisreset` |
+| Tester l'app en local serveur | `Invoke-WebRequest http://127.0.0.1:8000/ -UseBasicParsing \| Select-Object StatusCode` (200 attendu) |
+| Logs de l'app | `Get-Content C:\apps\suivi-feuille-de-route\logs\err.log -Tail 30` |
+| Mise à jour du code | remplacer les fichiers dans `C:\apps\suivi-feuille-de-route`, puis `Restart-Service SuiviFDR` |
+| Sauvegarder la base à la main | `Copy-Item C:\apps\suivi-feuille-de-route\data\app.db C:\backups\app.db -Force` |
+
+## Déployer plusieurs autres applications sur le même serveur
+
+### Pattern « une application = un service + un site IIS » (recommandé pour des petites applis internes)
+Chaque appli Python/Flask suit le même schéma que SuiviFDR :
+1. un **service Windows dédié** (NSSM) qui écoute sur `127.0.0.1:<port-interne>` (8001, 8002…) ;
+2. un **site IIS** (ou un dossier virtuel) sur un port public distinct (81, 82…) ou un sous-chemin, avec un `web.config` de reverse proxy vers le port interne ;
+3. l'authentification Windows est héritée du site parent si sous-dossier virtuel.
+
+Exemple pour une appli « app2 » dans `C:\apps\app2`, port interne 8001, site IIS port 81 :
+```powershell
+nssm install App2 "C:\Python312\python.exe"
+nssm set App2 AppDirectory "C:\apps\app2"
+nssm set App2 AppParameters "-m waitress --listen=127.0.0.1:8001 app:app"
+nssm set App2 Start SERVICE_AUTO_START
+nssm start App2
+# site IIS "App2" sur le port 81, racine C:\inetpub\app2,
+# web.config avec action url="http://127.0.0.1:8001/{R:1}"
+```
+URL : `http://PRO205911MST001:81/` (ouvrir le port 81 dans le pare-feu, interne uniquement). Variante sous-dossier : `http://PRO205911MST001/app2/` (auth Windows héritée).
+
+### Si beaucoup d'applications conteneurisables : une VM Linux dédiée (Hyper-V) + Docker
+- Créer une VM Ubuntu sous Hyper-V sur PRO205911MST001, y installer Docker, puis un `docker-compose.yml` avec **un service par application**, chacun publié sur un port distinct (5001, 5002…) : `docker compose up -d`.
+- Optionnel : un reverse proxy unique (NGINX/Traefik, ou IIS sur le serveur Windows) qui route par sous-chemin (`/app1/`, `/app2/`) ou par nom d'hôte.
+- Règles communes : un port interne par appli, pare-feu (ports ouverts uniquement en interne), sauvegarde de chaque volume/fichier de données, une doc par appli.
