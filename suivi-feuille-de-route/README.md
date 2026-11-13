@@ -92,13 +92,14 @@ Vérification : `Get-Service SuiviFDR` → `Running`, puis depuis le navigateur 
 **Étape 4 — IIS en reverse proxy + authentification Windows (SSO)** :
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\windows\setup-iis.ps1   # installe le rôle IIS
-# puis manuellement :
-#  - installer ARR 3.0 + URL Rewrite 2.1 (MSI depuis iis.net/downloads/microsoft/...)
-#  - IIS Manager > serveur > ARR > Server Proxy Settings > cocher "Enable proxy"
-#  - créer un site "SuiviFDR" : port 80, binding = nom ou IP du serveur, racine C:\inetpub\wwwroot
-#  - copier windows\web.config dans C:\inetpub\wwwroot\web.config
-#    (reverse proxy vers 127.0.0.1:8000 + Windows Authentication activée, anonyme désactivée)
+# installer ARR 3.0 + URL Rewrite 2.1 (MSI depuis iis.net/downloads/microsoft/...)
+powershell -ExecutionPolicy Bypass -File .\windows\setup-site.ps1  # cree le site SuiviFDR (port 80) + web.config + proxy ARR
 ```
+`setup-site.ps1` fait le reste automatiquement : active le proxy ARR, arrete le Default Web Site, 
+cree le site SuiviFDR sur le port 80 (racine `C:\inetpub\wwwroot`), copie `windows\web.config` 
+(reverse proxy vers `127.0.0.1:8000` + Windows Authentication), redemarre IIS.
+Equivalent manuel : IIS Manager > serveur > ARR > Enable proxy ; creer le site SuiviFDR (port 80, racine `C:\inetpub\wwwroot`) ;
+copier `windows\web.config` dans `C:\inetpub\wwwroot\web.config` ; activer Windows Authentication, desactiver Anonymous.
 Accès depuis les postes du domaine : `http://WIN-209BDR3JSTD/` (ou l'IP du serveur) — connexion avec les identifiants AD, aucune configuration côté app.
 
 **Étape 5 — Pare-feu** : le port 80 est ouvert par défaut avec IIS. Pour restreindre aux postes internes uniquement :
