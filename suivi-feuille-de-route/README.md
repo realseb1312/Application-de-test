@@ -74,16 +74,49 @@ Deux possibilités, toutes deux supportées :
 
 ### Option 1 — installation native (recommandée sur Windows Server)
 La plus simple et la mieux intégrée à un domaine Active Directory (SSO via IIS).
+Deux scripts fournis dans `windows/` automatisent tout : `install-service.ps1` (service Windows) et `setup-iis.ps1` + `web.config` (IIS).
 
+**Étape 1 — Prérequis sur le serveur** : installer **Python 3.12+** depuis python.org en cochant « Add Python to PATH » et « Install for all users ».
+
+**Étape 2 — Déployer le code** : copier le dossier `suivi-feuille-de-route` (branche `vibe/suivi-feuille-de-route-b2db25`) sur le serveur, par ex. dans `C:\apps\suivi-feuille-de-route`.
+
+**Étape 3 — Créer le service Windows** (PowerShell **administrateur**, dans le dossier déployé) :
 ```powershell
-# 1. Installer Python 3.12 (python.org, « Add Python to PATH », Install for all users)
-# 2. Déployer le code, ex. dans C:\apps\suivi-feuille-de-route
-cd C:\apps\suivi-feuille-de-route
-pip install -r requirements.txt -r requirements-windows.txt    # waitress (serveur WSGI Windows)
+powershell -ExecutionPolicy Bypass -File .\windows\install-service.ps1
+# le script : installe les dépendances (requirements.txt + requirements-windows.txt = waitress),
+# télécharge NSSM, crée le service "SuiviFDR" en démarrage automatique, le lance,
+# et l'app écoute sur http://127.0.0.1:8000 (local serveur uniquement)
+```
+Vérification : `Get-Service SuiviFDR` → `Running`, puis depuis le navigateur **du serveur** : `http://127.0.0.1:8000` → l'app doit s'afficher (96 actions importées automatiquement au 1er lancement).
 
-# 3. Créer un service Windows avec NSSM (nssm.cc) pour que l'app démarre automatiquement
-#    (PowerShell administrateur)
-choco install nssm -y    # ou télécharger nssm et l'extraire
+**Étape 4 — IIS en reverse proxy + authentification Windows (SSO)** :
+```powershell
+powershell -ExecutionPolicy Bypass -File .\windows\setup-iis.ps1   # installe le rôle IIS
+# puis manuellement :
+#  - installer ARR 3.0 + URL Rewrite 2.1 (MSI depuis iis.net/downloads/microsoft/...)
+#  - IIS Manager > serveur > ARR > Server Proxy Settings > cocher "Enable proxy"
+#  - créer un site "SuiviFDR" : port 80, binding = nom ou IP du serveur, racine C:\inetpub\wwwroot
+#  - copier windows\web.config dans C:\inetpub\wwwroot\web.config
+#    (reverse proxy vers 127.0.0.1:8000 + Windows Authentication activée, anonyme désactivée)
+```
+Accès depuis les postes du domaine : `http://WIN-209BDR3JSTD/` (ou l'IP du serveur) — connexion avec les identifiants AD, aucune configuration côté app.
+
+**Étape 5 — Pare-feu** : le port 80 est ouvert par défaut avec IIS. Pour restreindre aux postes internes uniquement :
+```powershell
+New-NetFirewallRule -DisplayName "SuiviFDR - interne uniquement" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -Profile Private -RemoteAddress 10.142.0.0/24
+```
+
+**Données** : `C:\apps\suivi-feuille-de-route\data\app.db` — tâche planifiée de sauvegarde quotidienne :
+```powershell
+schtasks /create /tn "Backup SuiviFDR" /tr "cmd /c copy C:\apps\suivi-feuille-de-route\data\app.db C:\backups\app-%date:~-4,4%%date:~-7,2%%date:~-10,2%.db /Y" /sc daily /st 02:00
+```
+**Mises à jour** : remplacer les fichiers dans `C:\apps\suivi-feuille-de-route`, puis `nssm restart SuiviFDR` (ou `Restart-Service SuiviFDR`).
+
+Détail manuel équivalent (sans les scripts) : voir ci-dessous.
+```powershell
+cd C:\apps\suivi-feuille-de-route
+pip install -r requirements.txt -r requirements-windows.txt
+choco install nssm -y
 nssm install SuiviFDR "C:\Python312\python.exe"
 nssm set SuiviFDR AppDirectory "C:\apps\suivi-feuille-de-route"
 nssm set SuiviFDR AppParameters "-m waitress --listen=127.0.0.1:8000 app:app"
