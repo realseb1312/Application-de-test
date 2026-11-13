@@ -1,0 +1,13 @@
+services:
+  suivi-fdr:
+    build: .
+    image: suivi-fdr:latest
+    container_name: suivi-fdr
+    restart: unless-stopped
+    ports:
+      - "5000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      FDR_HOST: 0.0.0.0
+      FDR_PORT: "8000"

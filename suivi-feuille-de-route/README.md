@@ -68,6 +68,32 @@ Dans votre navigateur : **http://127.0.0.1:5000**
 ### Sécurité
 Par défaut, l'application n'écoute que sur **127.0.0.1** (votre machine uniquement). Voir la section « Déploiement sur un serveur » ci-dessous pour un accès réseau contrôlé.
 
+## Docker (Windows, Linux, macOS)
+
+Prérequis : **Docker Desktop** installé et démarré (Windows : backend WSL2 recommandé, activé dans les paramètres de Docker Desktop).
+
+```bash
+cd suivi-feuille-de-route
+# build + démarrage en arrière-plan :
+docker compose up -d --build
+# ou sans compose :
+#   docker build -t suivi-fdr .
+#   docker run -d --name suivi-fdr -p 5000:8000 -v "%cd%\data:/app/data" suivi-fdr   (cmd)
+#   docker run -d --name suivi-fdr -p 5000:8000 -v "${PWD}/data:/app/data" suivi-fdr   (PowerShell)
+```
+
+- Accès local : **http://localhost:5000**
+- Accès depuis un autre poste du réseau : **http://\<IP-de-la-machine\>:5000** (Docker Desktop publie le port 5000 sur toutes les interfaces de l'hôte ; si le pare-feu Windows bloque, autorisez le port 5000 en entrée, profil privé)
+- Le conteneur embarque le fichier Excel `seed/` : au premier démarrage, les 96 actions sont importées automatiquement dans la base.
+- **Données persistantes** : le volume `./data` (fichier `data/app.db`) est monté dans le conteneur → vos saisies survivent à la suppression/recréation du conteneur. Sauvegarde = copier `data/app.db`.
+- Commandes utiles :
+  ```bash
+  docker logs -f suivi-fdr        # voir les logs
+  docker compose down             # arrêter + supprimer le conteneur
+  docker compose up -d --build    # après une mise à jour du code : rebuild + redémarrage
+  ```
+- Le conteneur fait tourner **Gunicorn** (serveur WSGI de production) en écoute sur `0.0.0.0:8000` à l'intérieur du conteneur, publié sur le port `5000` de l'hôte.
+
 ## Déploiement sur un serveur
 
 L'application n'a **pas d'authentification intégrée** : ne l'exposez jamais directement sur Internet. Deux options :
