@@ -8,7 +8,7 @@
   https://www.iis.net/downloads/microsoft/url-rewrite (MSI), puis activer le proxy :
   IIS Manager > <serveur> > Application Request Routing Cache > Server Proxy Settings > Enable proxy.
 #>
-Install-WindowsFeature -Name Web-Server, Web-Mgmt-Console -IncludeManagementTools
+Install-WindowsFeature -Name Web-Server, Web-Mgmt-Console, Web-Windows-Auth -IncludeManagementTools
 Write-Host "Rôle IIS installé (redémarrage parfois demandé)."
 Write-Host "Etapes suivantes :"
 Write-Host " 1. Installer ARR 3.0 et URL Rewrite 2.1 (MSI depuis iis.net)"

@@ -100,6 +100,9 @@ crée le site SuiviFDR sur le port 80 (racine `C:\inetpub\wwwroot`), copie `wind
 (reverse proxy vers `127.0.0.1:8000` + Windows Authentication), redémarre IIS.
 Équivalent manuel : IIS Manager > serveur > ARR > Enable proxy ; créer le site SuiviFDR (port 80, racine `C:\inetpub\wwwroot`) ;
 copier `windows\web.config` dans `C:\inetpub\wwwroot\web.config` ; activer Windows Authentication, desactiver Anonymous.
+**Dépannage 500.19 (0x80070021)** : la fonctionnalité IIS «Authentification Windows» n'est pas installée (le web.config plante alors)
+-> `Install-WindowsFeature -Name Web-Windows-Auth` puis `iisreset`. Le script `setup-iis.ps1` l'installe désormais automatiquement.
+
 Accès depuis les postes du domaine : `http://WIN-209BDR3JSTD/` (ou l'IP du serveur) — connexion avec les identifiants AD, aucune configuration côté app.
 
 **Étape 5 — Pare-feu** : le port 80 est ouvert par défaut avec IIS. Pour restreindre aux postes internes uniquement :
