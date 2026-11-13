@@ -68,6 +68,75 @@ Dans votre navigateur : **http://127.0.0.1:5000**
 ### Sécurité
 Par défaut, l'application n'écoute que sur **127.0.0.1** (votre machine uniquement). Voir la section « Déploiement sur un serveur » ci-dessous pour un accès réseau contrôlé.
 
+## Windows Server 2022 Standard
+
+Deux possibilités, toutes deux supportées :
+
+### Option 1 — installation native (recommandée sur Windows Server)
+La plus simple et la mieux intégrée à un domaine Active Directory (SSO via IIS).
+
+```powershell
+# 1. Installer Python 3.12 (python.org, « Add Python to PATH », Install for all users)
+# 2. Déployer le code, ex. dans C:\apps\suivi-feuille-de-route
+cd C:\apps\suivi-feuille-de-route
+pip install -r requirements.txt -r requirements-windows.txt    # waitress (serveur WSGI Windows)
+
+# 3. Créer un service Windows avec NSSM (nssm.cc) pour que l'app démarre automatiquement
+#    (PowerShell administrateur)
+choco install nssm -y    # ou télécharger nssm et l'extraire
+nssm install SuiviFDR "C:\Python312\python.exe"
+nssm set SuiviFDR AppDirectory "C:\apps\suivi-feuille-de-route"
+nssm set SuiviFDR AppParameters "-m waitress --listen=127.0.0.1:8000 app:app"
+nssm set SuiviFDR Start SERVICE_AUTO_START
+nssm set SuiviFDR AppStdout "C:\apps\suivi-feuille-de-route\logs\out.log"
+nssm set SuiviFDR AppStderr "C:\apps\suivi-feuille-de-route\logs\err.log"
+nssm start SuiviFDR
+```
+L'app n'écoute alors que sur `127.0.0.1:8000` (boucle locale du serveur).
+
+```powershell
+# 4. IIS en reverse proxy + authentification Windows (SSO domaine) :
+#    - Server Manager > Ajouter des rôles > Web Server (IIS)
+#    - Installer Application Request Routing (ARR) 3.0 + URL Rewrite 2.1 (MSI Microsoft)
+#    - IIS Manager > serveur > "Application Request Routing Cache" > "Server Proxy Settings" > cocher "Enable proxy"
+#    - Créer un site "SuiviFDR" (port 80, binding = nom/IP du serveur), racine C:\inetpub\wwwroot
+#      avec ce web.config :
+```
+```xml
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name="VersApp" stopProcessing="true">
+          <match url="(.*)" />
+          <action type="Rewrite" url="http://127.0.0.1:8000/{R:1}" />
+        </rule>
+      </rules>
+    </rewrite>
+    <security>
+      <authentication>
+        <windowsAuthentication enabled="true" />
+        <anonymousAuthentication enabled="false" />
+      </authentication>
+    </security>
+  </system.webServer>
+</configuration>
+```
+Accès : `http://nom-du-serveur/` avec les identifiants du domaine — **authentification gérée par l'AD**, sans rien ajouter à l'app.
+- Pare-feu : le port 80 est ouvert par défaut avec IIS. Données : `C:\apps\suivi-feuille-de-route\data\app.db` (sauvegarder ce fichier).
+- Mises à jour : remplacer les fichiers du dossier, puis `nssm restart SuiviFDR`.
+
+### Option 2 — conteneur Windows (Docker sur Windows Server 2022)
+Docker Desktop ne fonctionne PAS sur Windows Server. Il faut le moteur Docker « serveur » + des **conteneurs Windows** :
+```powershell
+Install-WindowsFeature -Name Containers -IncludeAllSubFeature -Restart
+# puis installer Docker Engine pour Windows Server (docs Microsoft / Mirantis Container Runtime)
+# image de base Windows Server Core (lourde, plusieurs Go) avec Python installé à l'intérieur :
+docker build -f Dockerfile.windows -t suivi-fdr .
+docker run -d --name suivi-fdr -p 5000:8000 -v C:\suivi-fdr-data:C:\app\data suivi-fdr
+```
+Accès : `http://<IP-du-serveur>:5000` (+ règle pare-feu pour le port 5000 si besoin). L'image fait plusieurs Go et démarre plus lentement qu'un conteneur Linux : l'option 1 est préférable sur un serveur Windows.
+
 ## Docker (Windows, Linux, macOS)
 
 Prérequis : **Docker Desktop** installé et démarré (Windows : backend WSL2 recommandé, activé dans les paramètres de Docker Desktop).
