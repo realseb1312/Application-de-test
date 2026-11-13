@@ -137,6 +137,16 @@ docker run -d --name suivi-fdr -p 5000:8000 -v C:\suivi-fdr-data:C:\app\data sui
 ```
 Accès : `http://<IP-du-serveur>:5000` (+ règle pare-feu pour le port 5000 si besoin). L'image fait plusieurs Go et démarre plus lentement qu'un conteneur Linux : l'option 1 est préférable sur un serveur Windows.
 
+### Option 3 — Linux dans Windows (WSL2) ou VM Hyper-V
+**WSL2 est supporté par Microsoft sur Windows Server 2022** (fonctionnalités « Sous-système Windows pour Linux » + « Plateforme de machine virtuelle », puis `wsl --install -d Ubuntu`, redémarrage, `wsl --set-default-version 2`). Deux usages possibles pour cette application :
+
+1. **Faire tourner l'app directement dans la distro Linux** (sans Docker) : installer python3/pip dans Ubuntu, copier le projet, `pip install -r requirements.txt`, puis `python3 app.py` (ou gunicorn). Pour le démarrage auto : activer systemd dans WSL (`/etc/wsl.conf` → `[boot]\nsystemd=true`) + unité systemd, et faire démarrer la distro au boot du serveur via une tâche planifiée (`wsl -d Ubuntu`). Pratique pour tester rapidement.
+2. **Docker + conteneurs Linux via WSL2** : techniquement faisable sur Server 2022 (dockerd avec backend WSL2, image `python:3.12-slim` du Dockerfile), mais **non officiellement supporté** par Docker sur Windows Server (seuls les conteneurs Windows y sont supportés officiellement). Pour un déploiement Docker Linux supporté : préférer une **VM Ubuntu sous Hyper-V** (`docker compose up -d --build` avec le Dockerfile Linux existant).
+
+⚠️ WSL2 réserve de la RAM à l'hôte (limite configurable via `C:\Users\<user>\.wslconfig`) et la distro ne démarre pas toute seule au boot du serveur sans configuration.
+
+**Recommandation sur Windows Server 2022 Standard : rester sur l'option 1 (native Waitress + IIS/AD).** WSL2/VM Linux sert surtout pour des tests ou si vous hébergez volontairement une petite VM Linux dédiée.
+
 ## Docker (Windows, Linux, macOS)
 
 Prérequis : **Docker Desktop** installé et démarré (Windows : backend WSL2 recommandé, activé dans les paramètres de Docker Desktop).
