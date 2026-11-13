@@ -100,8 +100,13 @@ crée le site SuiviFDR sur le port 80 (racine `C:\inetpub\wwwroot`), copie `wind
 (reverse proxy vers `127.0.0.1:8000` + Windows Authentication), redémarre IIS.
 Équivalent manuel : IIS Manager > serveur > ARR > Enable proxy ; créer le site SuiviFDR (port 80, racine `C:\inetpub\wwwroot`) ;
 copier `windows\web.config` dans `C:\inetpub\wwwroot\web.config` ; activer Windows Authentication, desactiver Anonymous.
-**Dépannage 500.19 (0x80070021)** : la fonctionnalité IIS «Authentification Windows» n'est pas installée (le web.config plante alors)
--> `Install-WindowsFeature -Name Web-Windows-Auth` puis `iisreset`. Le script `setup-iis.ps1` l'installe désormais automatiquement.
+**Dépannage 500.19 (0x80070021)** : la section `<authentication>` est verrouillée au niveau parent : ne JAMAIS la mettre dans `web.config`. 
+Solution retenue : `windows/web.config` ne contient que la règle de reverse proxy ; l'authentification Windows se définit AU NIVEAU DU SITE par `setup-site.ps1` :
+```powershell
+Set-WebConfigurationProperty -pspath 'IIS:\Sites\SuiviFDR' -filter 'system.webServer/security/authentication/windowsAuthentication' -name enabled -value True
+Set-WebConfigurationProperty -pspath 'IIS:\Sites\SuiviFDR' -filter 'system.webServer/security/authentication/anonymousAuthentication' -name enabled -value False
+```
+Prérequis : fonctionnalité IIS «Authentification Windows» (`Install-WindowsFeature Web-Windows-Auth`, installée par `setup-iis.ps1`) puis `iisreset`.
 
 Accès depuis les postes du domaine : `http://WIN-209BDR3JSTD/` (ou l'IP du serveur) — connexion avec les identifiants AD, aucune configuration côté app.
 

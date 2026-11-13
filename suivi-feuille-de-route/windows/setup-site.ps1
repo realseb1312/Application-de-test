@@ -39,9 +39,13 @@ Write-Host "[2/4] Site $SiteName cree sur le port $Port ($PhysicalPath)"
 
 # 3. Deployer le web.config (reverse proxy + Windows Authentication)
 Copy-Item (Join-Path $AppDir "windows\web.config") (Join-Path $PhysicalPath "web.config") -Force
-Write-Host "[3/4] web.config copie (proxy vers 127.0.0.1:8000 + auth Windows)"
+Write-Host "[3/4] web.config copie (proxy vers 127.0.0.1:8000) + auth Windows au niveau du site"
 
 # 4. Redemarrer IIS
+# 3b. Authentification Windows AU NIVEAU DU SITE (la section <authentication> est verrouillée dans web.config -> 500.19 sinon)
+Set-WebConfigurationProperty -pspath ("IIS:\Sites\" + $SiteName) -filter "system.webServer/security/authentication/windowsAuthentication" -name enabled -value "True"
+Set-WebConfigurationProperty -pspath ("IIS:\Sites\" + $SiteName) -filter "system.webServer/security/authentication/anonymousAuthentication" -name enabled -value "False"
+
 iisreset | Out-Null
 Write-Host "[4/4] IIS redemarre"
 Write-Host ""
