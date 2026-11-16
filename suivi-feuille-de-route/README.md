@@ -387,3 +387,15 @@ URL : `http://PRO205911MST001:81/` (ouvrir le port 81 dans le pare-feu, interne 
 - Créer une VM Ubuntu sous Hyper-V sur PRO205911MST001, y installer Docker, puis un `docker-compose.yml` avec **un service par application**, chacun publié sur un port distinct (5001, 5002…) : `docker compose up -d`.
 - Optionnel : un reverse proxy unique (NGINX/Traefik, ou IIS sur le serveur Windows) qui route par sous-chemin (`/app1/`, `/app2/`) ou par nom d'hôte.
 - Règles communes : un port interne par appli, pare-feu (ports ouverts uniquement en interne), sauvegarde de chaque volume/fichier de données, une doc par appli.
+
+
+## Technologies utilisées
+
+| Couche | Technologies |
+|---|---|
+| **Backend** | Python 3.10+, **Flask 3.x** (API REST JSON + templates **Jinja2**), **SQLite** via le module standard `sqlite3` (base embarquée, zéro dépendance), **openpyxl** (import/export Excel .xlsx) |
+| **Frontend** | **HTML5 + CSS3 100 % maison + JavaScript ES6+ vanilla** (`fetch` API) ; graphiques en HTML/CSS maison (`static/js/charts.js`) — **aucune dépendance externe, aucun CDN** : l'app fonctionne entièrement hors-ligne |
+| **Rapports / impression** | Mise en page **CSS `@media print`** (A4) ; impression / export PDF via le navigateur (bouton « Imprimer / Enregistrer en PDF ») |
+| **Serveur d'application (WSGI)** | **Waitress** (Windows), **Gunicorn** (Linux), serveur de développement Flask en local |
+| **Déploiement** | Service Windows via **NSSM**, **IIS + ARR + URL Rewrite** (reverse proxy + authentification Windows AD), **systemd** (Linux), **Docker** (`python:3.12-slim` + Gunicorn ; image Windows `servercore:ltsc2022` + Waitress), scripts PowerShell d'installation (`windows/`) |
+| **Outils / dev** | Git + GitHub (branche `vibe/suivi-feuille-de-route-b2db25`, PR #1), CLI `gh` |
